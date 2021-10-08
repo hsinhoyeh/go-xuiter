@@ -8,14 +8,14 @@ import (
 	"path/filepath"
 )
 
-func SaveFile(prefix, folder, filename string, url string) error {
+func SaveFile(client *http.Client, prefix, folder, filename string, url string) error {
 	fullFolderPath := filepath.Join(prefix, folder)
 	if err := os.MkdirAll(fullFolderPath, os.ModePerm); err != nil {
 		return err
 	}
 	fullFileName := filepath.Join(fullFolderPath, filename)
 
-	response, err := http.Get(url)
+	response, err := client.Get(url)
 	if err != nil {
 		return err
 	}

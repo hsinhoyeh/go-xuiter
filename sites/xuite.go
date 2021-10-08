@@ -1,7 +1,9 @@
 package sites
 
 import (
+	"crypto/tls"
 	"fmt"
+	"net/http"
 	"net/url"
 	"strings"
 
@@ -15,6 +17,7 @@ type XuiteAlbumController struct {
 	c                 *goxuiter.CollyController
 	destinationPrefix string
 	password          string
+	client            *http.Client
 }
 
 func NewXuiteAlbumController(c *goxuiter.CollyController, destinationPrefix string, password string) *XuiteAlbumController {
@@ -22,6 +25,11 @@ func NewXuiteAlbumController(c *goxuiter.CollyController, destinationPrefix stri
 		c:                 c,
 		password:          password,
 		destinationPrefix: destinationPrefix,
+		client: &http.Client{
+			Transport: &http.Transport{
+				TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+			},
+		},
 	}
 	alb.RegisterCallbacks()
 	return alb
@@ -62,7 +70,7 @@ func (x *XuiteAlbumController) RegisterCallbacks() {
 		fullResolutionHref := strings.Replace(href, "_c.jpg", "_x.jpg", -1)
 
 		log.Infof("title:%v, filename:%+v, href:%+v\n", myTitle, fileName, fullResolutionHref)
-		if err := goxuiter.SaveFile(x.destinationPrefix, myTitle, fileName, fullResolutionHref); err != nil {
+		if err := goxuiter.SaveFile(x.client, x.destinationPrefix, myTitle, fileName, fullResolutionHref); err != nil {
 			log.Error("save file failed, err:%v\n", err)
 			return
 		}
