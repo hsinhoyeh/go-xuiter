@@ -8,7 +8,23 @@ import (
 	"path/filepath"
 )
 
+func FolderExit(prefix, folder string) bool {
+	return exists(filepath.Join(prefix, folder))
+}
+
+func exists(path string) bool {
+	if _, err := os.Stat(path); os.IsNotExist(err) {
+		return false
+	}
+	return true
+}
+
 func SaveFile(client *http.Client, prefix, folder, filename string, url string) error {
+	if exists(filepath.Join(prefix, folder, filename)) {
+		// file already exists
+		return nil
+	}
+
 	fullFolderPath := filepath.Join(prefix, folder)
 	if err := os.MkdirAll(fullFolderPath, os.ModePerm); err != nil {
 		return err

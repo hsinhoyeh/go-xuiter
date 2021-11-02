@@ -45,6 +45,10 @@ func (x *XuiteAlbumController) RegisterCallbacks() {
 	})
 	x.c.OnHTML("p[class=album_info_title]", func(e *colly.HTMLElement) {
 		title := stripString(e.Text)
+		if goxuiter.FolderExit(x.destinationPrefix, title) {
+			log.Infof("ignore %s\n", title)
+			return
+		}
 		// handle multiple pages
 		for pages := 1; pages < 5; pages++ {
 			href := fmt.Sprintf("https:%s*%d?t=%s", e.ChildAttr("a[href]", "href"), pages, title)
