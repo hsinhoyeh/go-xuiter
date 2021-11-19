@@ -5,7 +5,9 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"regexp"
 	"strings"
+	"time"
 
 	"github.com/gocolly/colly/v2"
 	log "github.com/golang/glog"
@@ -43,16 +45,24 @@ func (x *XuiteAlbumController) RegisterCallbacks() {
 		fmt.Println("visited", r.Request.URL)
 		//fmt.Printf("body:%s\n", string(r.Body))
 	})
-	x.c.OnHTML("p[class=album_info_title]", func(e *colly.HTMLElement) {
-		title := stripString(e.Text)
-		if goxuiter.FolderExit(x.destinationPrefix, title) {
-			log.Infof("ignore %s\n", title)
-			return
+	//x.c.OnHTML("p[class=album_info_title]", func(e *colly.HTMLElement) {
+	x.c.OnHTML("div[class=album_info]", func(e *colly.HTMLElement) {
+		title := e.ChildText("p[class=album_info_title]")
+		datestr := e.ChildText("p[class=album_info_date]")
+		regex := regexp.MustCompile(`[0-9]{4}-[0-9]{2}-[0-9]{2}`)
+		matches := regex.FindAllString(datestr, -1)
+		var date string
+		if len(matches) != 1 {
+			date = time.Now().Format("20060102")
+		} else {
+			date = matches[0]
 		}
+		folder := fmt.Sprintf("%s/%s", date, title)
+		fmt.Printf("folder:%s\n", folder)
 		// handle multiple pages
-		for pages := 1; pages < 5; pages++ {
-			href := fmt.Sprintf("https:%s*%d?t=%s", e.ChildAttr("a[href]", "href"), pages, title)
-			log.Infof("album title: %+v, href:%s", title, href)
+		for pages := 1; pages < 10; pages++ {
+			href := fmt.Sprintf("https:%s*%d?t=%s", e.ChildAttr("a[href]", "href"), pages, folder)
+			log.Infof("album title: %+v, href:%s", folder, href)
 
 			u, err := url.Parse(href)
 			if err != err {
