@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"path"
 	"regexp"
 	"strings"
 	"time"
@@ -45,10 +46,9 @@ func (x *XuiteAlbumController) RegisterCallbacks() {
 		fmt.Println("visited", r.Request.URL)
 		//fmt.Printf("body:%s\n", string(r.Body))
 	})
-	//x.c.OnHTML("p[class=album_info_title]", func(e *colly.HTMLElement) {
-	x.c.OnHTML("div[class=album_info]", func(e *colly.HTMLElement) {
-		title := e.ChildText("p[class=album_info_title]")
-		datestr := e.ChildText("p[class=album_info_date]")
+	x.c.OnHTML("li[class=albumlist-photo-item]", func(e *colly.HTMLElement) {
+		title := e.ChildText("a[class=albumlist-photo-name]")
+		datestr := e.ChildText("time")
 		regex := regexp.MustCompile(`[0-9]{4}-[0-9]{2}-[0-9]{2}`)
 		matches := regex.FindAllString(datestr, -1)
 		var date string
@@ -58,10 +58,10 @@ func (x *XuiteAlbumController) RegisterCallbacks() {
 			date = matches[0]
 		}
 		folder := fmt.Sprintf("%s/%s", date, title)
-		fmt.Printf("folder:%s\n", folder)
+		log.Infof("folder:%s\n", folder)
 		// handle multiple pages
 		for pages := 1; pages < 10; pages++ {
-			href := fmt.Sprintf("https:%s*%d?t=%s", e.ChildAttr("a[href]", "href"), pages, folder)
+			href := fmt.Sprintf("https://m.xuite.net%s*%d?t=%s", e.ChildAttr("a[href]", "href"), pages, folder)
 			log.Infof("album title: %+v, href:%s", folder, href)
 
 			u, err := url.Parse(href)
@@ -72,16 +72,20 @@ func (x *XuiteAlbumController) RegisterCallbacks() {
 			x.c.AddRequest(&colly.Request{
 				URL:    u,
 				Method: "POST",
-				Body:   strings.NewReader(fmt.Sprintf("pwd=%s", x.password)),
+				Body:   strings.NewReader(fmt.Sprintf("pwInput=%s", x.password)),
 			})
 		}
 	})
-	x.c.OnHTML(".photo_item.inline-block", func(e *colly.HTMLElement) {
+	x.c.OnHTML("ul[class=photolist-photo-list]", func(e *colly.HTMLElement) {
+		//fmt.Printf("photolist-photo-list called!!")
+	})
+	x.c.OnHTML("li[class=photolist-photo-item]", func(e *colly.HTMLElement) {
+		//fmt.Printf("photolist-photo-item called!!")
 		q := e.Request.URL.Query()
 		myTitle := q["t"][0]
-		fileName := stripString(e.Text)
 		href := e.ChildAttr("img[src]", "src")
-		fullResolutionHref := strings.Replace(href, "_c.jpg", "_x.jpg", -1)
+		fullResolutionHref := strings.Replace(href, "_Q.jpg", "_x.jpg", -1)
+		fileName := path.Base(fullResolutionHref)
 
 		log.Infof("title:%v, filename:%+v, href:%+v\n", myTitle, fileName, fullResolutionHref)
 		if err := goxuiter.SaveFile(x.client, x.destinationPrefix, myTitle, fileName, fullResolutionHref); err != nil {
